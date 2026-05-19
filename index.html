@@ -562,6 +562,57 @@ a{color:inherit;text-decoration:none}
 .quick-range-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:end;}
 .quick-range-bar .btn{height:36px;}
 
+
+
+/* ── ROW STRIPING: bảng thống kê và danh sách nhiệm vụ ──
+   Màu xen kẽ theo yêu cầu: #fdfdfe và #ffffe4 */
+#screen-tasks .task-table tbody tr:nth-child(odd) td,
+#screen-stats .stats-table tbody tr:nth-child(odd) td,
+#screen-stats .task-table tbody tr:nth-child(odd) td,
+.stats-result-list .task-table tbody tr:nth-child(odd) td,
+#auditTbody tr:nth-child(odd) td,
+#userTbody tr:nth-child(odd) td {
+  background:#fdfdfe!important;
+}
+#screen-tasks .task-table tbody tr:nth-child(even) td,
+#screen-stats .stats-table tbody tr:nth-child(even) td,
+#screen-stats .task-table tbody tr:nth-child(even) td,
+.stats-result-list .task-table tbody tr:nth-child(even) td,
+#auditTbody tr:nth-child(even) td,
+#userTbody tr:nth-child(even) td {
+  background:#ffffe4!important;
+}
+
+/* Hover giữ rõ nhưng không phá màu cảnh báo */
+#screen-tasks .task-table tbody tr:hover td,
+#screen-stats .stats-table tbody tr:hover td,
+#screen-stats .task-table tbody tr:hover td,
+.stats-result-list .task-table tbody tr:hover td,
+#auditTbody tr:hover td,
+#userTbody tr:hover td {
+  background:#eef4fd!important;
+}
+
+/* Dòng tổng cộng trong thống kê nổi bật hơn nhưng vẫn theo hệ màu nhẹ */
+#screen-stats .stats-table tbody tr:first-child td {
+  font-weight:800!important;
+  border-bottom:2px solid #d7e3f2!important;
+}
+
+/* Mobile card: giữ nền trắng cho từng thẻ để không bị loang màu nền bảng */
+@media(max-width:768px){
+  #screen-tasks .task-table tbody tr,
+  #screen-tasks .task-table tbody tr:nth-child(odd),
+  #screen-tasks .task-table tbody tr:nth-child(even){
+    background:#fff!important;
+  }
+  #screen-tasks .task-table tbody tr td,
+  #screen-tasks .task-table tbody tr:nth-child(odd) td,
+  #screen-tasks .task-table tbody tr:nth-child(even) td{
+    background:transparent!important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1378,15 +1429,46 @@ function uniqueSorted_(arr, labelFn) {
 function personFilterLabel_(v) {
   return shortName(getUserName(v) || v).trim();
 }
+
+// Sắp xếp tên người thống nhất cho các điều kiện lọc/tìm kiếm:
+// Vũ Quý Hưng → Trương Ngọc Quảng → Đỗ Quang Huy → các công chức theo vần ABC.
+function vnNameKey_(name) {
+  return String(name || '')
+    .trim()
+    .toLocaleLowerCase('vi')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/\s+/g, ' ');
+}
+function personDisplayName_(x) {
+  if (!x) return '';
+  if (typeof x === 'object') return String(x.fullname || getUserName(x.username) || x.username || x.id || '').trim();
+  return personFilterLabel_(x);
+}
+function personSortRankByName_(name) {
+  const key = vnNameKey_(name);
+  const order = [
+    vnNameKey_('Vũ Quý Hưng'),
+    vnNameKey_('Trương Ngọc Quảng'),
+    vnNameKey_('Đỗ Quang Huy')
+  ];
+  const idx = order.indexOf(key);
+  return idx >= 0 ? idx : 100;
+}
+function comparePersonByRequiredOrder_(a, b) {
+  const an = personDisplayName_(a), bn = personDisplayName_(b);
+  return (personSortRankByName_(an) - personSortRankByName_(bn)) || an.localeCompare(bn, 'vi');
+}
 function uniquePeopleFilterValues_(values) {
   const map = new Map();
   values.forEach(v => {
     const label = personFilterLabel_(v);
     if (!label) return;
-    const key = label.toLowerCase().normalize('NFC');
+    const key = vnNameKey_(label);
     if (!map.has(key)) map.set(key, label);
   });
-  return [...map.values()].sort((a,b)=>a.localeCompare(b,'vi'));
+  return [...map.values()].sort(comparePersonByRequiredOrder_);
 }
 
 function populateSelectOptions_(id, values, allLabel, labelFn) {
@@ -2369,7 +2451,11 @@ function badgeHtml(val, type) {
 }
 
 function populateUserSelects() {
-  const opts = ['<option value="">-- Chọn --</option>', ...allUsers.filter(u => (u.status||'Active') === 'Active').map(u=>`<option value="${esc(u.username)}">${esc(u.fullname)}</option>`)].join('');
+  const activeUsers = allUsers
+    .filter(u => (u.status || 'Active') === 'Active')
+    .slice()
+    .sort(comparePersonByRequiredOrder_);
+  const opts = ['<option value="">-- Chọn --</option>', ...activeUsers.map(u=>`<option value="${esc(u.username)}">${esc(u.fullname)}</option>`)].join('');
   if (document.getElementById('fNguoiGiao')) document.getElementById('fNguoiGiao').innerHTML = opts;
   document.getElementById('fNguoiTH').innerHTML = opts;
   document.getElementById('fLanhDao').innerHTML = opts;
