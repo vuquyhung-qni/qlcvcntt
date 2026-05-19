@@ -526,6 +526,29 @@ a{color:inherit;text-decoration:none}
 .adv-search-row label{font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px}
 .adv-search-row input[type=checkbox]{accent-color:var(--c4)}
 
+
+
+/* ── FIX LOGO SIDEBAR: cắt viền đen bên trong ảnh logo, giữ các phần khác nguyên ── */
+.sidebar .brand-icon{
+  overflow:hidden!important;
+  padding:0!important;
+  background:transparent!important;
+  border:none!important;
+  box-shadow:none!important;
+  border-radius:10px!important;
+}
+.sidebar .brand-icon img{
+  width:120%!important;
+  height:120%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  transform:scale(1.08)!important;
+  display:block!important;
+  border:0!important;
+  outline:0!important;
+}
+
 </style>
 </head>
 <body>
@@ -675,8 +698,6 @@ a{color:inherit;text-decoration:none}
         </div>
         <div class="chart-grid">
           <div class="chart-card"><h3>📊 Phân bố trạng thái</h3><div class="chart-wrap"><canvas id="chartStatus"></canvas></div></div>
-          <div class="chart-card"><h3>🎯 Phân bố mức ưu tiên</h3><div class="chart-wrap"><canvas id="chartPriority"></canvas></div></div>
-          <div class="chart-card"><h3>👥 Khối lượng theo người thực hiện (Top 10)</h3><div class="chart-wrap"><canvas id="chartByPerson"></canvas></div></div>
           <div class="chart-card"><h3>📅 Tiến độ hoàn thành theo tháng</h3><div class="chart-wrap"><canvas id="chartByMonth"></canvas></div></div>
         </div>
       </div>
@@ -1292,6 +1313,7 @@ function loadDashboard() {
         <div class="log-dot"></div>
         <div class="log-body">
           <div class="log-action">[${t.taskId}] ${esc(t.tenNhiemVu)}</div>
+          <div class="log-meta">LĐPT: ${esc(shortName(getUserName(t.ldPhuTrach)) || '—')} · Người TH: ${esc(shortName(getUserName(t.nguoiThucHien)) || '—')}</div>
           <div class="log-meta">${badgeHtml(t.trangThai,'status')} · ${fmtDateVN(t.hanHoanThanh)}</div>
         </div></div>`).join('')
     : '<div class="empty-state" style="padding:20px"><p>Không có nhiệm vụ chưa hoàn thành</p></div>';
@@ -1325,12 +1347,36 @@ function filterAndGo(filter) {
 // ── TASK LIST ─────────────────────────────────────────────
 function uniqueSorted_(arr, labelFn) {
   const seen = new Set();
-  return arr.filter(v => {
-    v = String(v || '').trim();
-    if (!v || seen.has(v)) return false;
-    seen.add(v);
-    return true;
-  }).sort((a,b) => String(labelFn ? labelFn(a) : a).localeCompare(String(labelFn ? labelFn(b) : b), 'vi'));
+  const out = [];
+  (arr || []).forEach(raw => {
+    const v = String(raw || '').trim();
+    if (!v) return;
+    const label = String(labelFn ? labelFn(v) : v).trim();
+    const key = label.toLocaleLowerCase('vi');
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(v);
+  });
+  return out.sort((a,b) => String(labelFn ? labelFn(a) : a).localeCompare(String(labelFn ? labelFn(b) : b), 'vi'));
+}
+
+function personNameForFilter_(value) {
+  const name = String(getUserName(value) || value || '').trim();
+  return name;
+}
+
+function uniquePeopleNames_(values) {
+  const seen = new Set();
+  const out = [];
+  (values || []).forEach(v => {
+    const name = personNameForFilter_(v);
+    if (!name) return;
+    const key = name.toLocaleLowerCase('vi');
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(name);
+  });
+  return out.sort((a,b) => a.localeCompare(b, 'vi'));
 }
 
 function populateSelectOptions_(id, values, allLabel, labelFn) {
@@ -1343,13 +1389,13 @@ function populateSelectOptions_(id, values, allLabel, labelFn) {
 
 function populateColumnFilters() {
   const validTasks = allTasks.filter(t => /^ID\d{4,}$/i.test(String(t.taskId || '')));
-  const ldpts = uniqueSorted_(validTasks.map(t => t.ldPhuTrach), getUserName);
-  const nguoiTh = uniqueSorted_(validTasks.map(t => t.nguoiThucHien), getUserName);
+  const ldpts = uniquePeopleNames_(validTasks.map(t => t.ldPhuTrach));
+  const nguoiTh = uniquePeopleNames_(validTasks.map(t => t.nguoiThucHien));
   const ngayGiao = uniqueSorted_(validTasks.map(t => dateForInput(t.ngayGiao)).filter(Boolean));
   const han = uniqueSorted_(validTasks.map(t => dateForInput(t.hanHoanThanh)).filter(Boolean));
   const ngayHT = uniqueSorted_(validTasks.map(t => dateForInput(t.ngayHoanThanh)).filter(Boolean));
-  populateSelectOptions_('colFilterLdpt', ldpts, 'Tất cả', v => shortName(getUserName(v)));
-  populateSelectOptions_('colFilterNguoiTh', nguoiTh, 'Tất cả', v => shortName(getUserName(v)));
+  populateSelectOptions_('colFilterLdpt', ldpts, 'Tất cả', v => shortName(v));
+  populateSelectOptions_('colFilterNguoiTh', nguoiTh, 'Tất cả', v => shortName(v));
   populateSelectOptions_('colFilterNgayGiao', ngayGiao, 'Tất cả', v => fmtDateVN(v));
   populateSelectOptions_('colFilterHan', han, 'Tất cả', v => fmtDateVN(v));
   populateSelectOptions_('colFilterNgayHT', ngayHT, 'Tất cả', v => fmtDateVN(v));
@@ -1396,8 +1442,8 @@ function renderTaskList() {
     else if (st && st !== 'CHT' && t.trangThai !== st) return false;
     if (pr && t.mucUuTien !== pr) return false;
     if (wb && t.canhBao !== wb) return false;
-    if (fLd && t.ldPhuTrach !== fLd) return false;
-    if (fTh && t.nguoiThucHien !== fTh) return false;
+    if (fLd && personNameForFilter_(t.ldPhuTrach) !== fLd) return false;
+    if (fTh && personNameForFilter_(t.nguoiThucHien) !== fTh) return false;
     if (fNgayGiao && dateForInput(t.ngayGiao) !== fNgayGiao) return false;
     if (fHan && dateForInput(t.hanHoanThanh) !== fHan) return false;
     if (fNgayHT && dateForInput(t.ngayHoanThanh) !== fNgayHT) return false;
@@ -2672,52 +2718,7 @@ function renderDashboardCharts(){
     });
   }
 
-  // 2) Priority bar chart
-  destroyChart_('chartPriority');
-  const c2 = document.getElementById('chartPriority');
-  if (c2) {
-    const pc = { 'Cao':0, 'Trung bình':0, 'Thấp':0 };
-    allTasks.forEach(t => { if (pc[t.mucUuTien] !== undefined) pc[t.mucUuTien]++; });
-    chartInstances.chartPriority = new Chart(c2, {
-      type: 'bar',
-      data: {
-        labels: ['Cao', 'Trung bình', 'Thấp'],
-        datasets: [{ data: [pc['Cao'], pc['Trung bình'], pc['Thấp']],
-          backgroundColor: [COLORS.red, COLORS.orange, COLORS.lightBlue], borderRadius: 4 }]
-      },
-      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, maintainAspectRatio: false }
-    });
-  }
-
-  // 3) Workload by person (top 10)
-  destroyChart_('chartByPerson');
-  const c3 = document.getElementById('chartByPerson');
-  if (c3) {
-    const map = {};
-    allTasks.forEach(t => {
-      const k = t.nguoiThucHien || '—';
-      if (!map[k]) map[k] = { total:0, done:0, late:0 };
-      map[k].total++;
-      if (t.trangThai === 'HT') map[k].done++;
-      if (t.canhBao === 'Quá hạn') map[k].late++;
-    });
-    const arr = Object.entries(map).map(([k,v]) => ({ k, ...v }))
-      .sort((a,b) => b.total - a.total).slice(0, 10);
-    chartInstances.chartByPerson = new Chart(c3, {
-      type: 'bar',
-      data: {
-        labels: arr.map(x => shortName(getUserName(x.k))),
-        datasets: [
-          { label:'Tổng', data: arr.map(x => x.total), backgroundColor: COLORS.blue, borderRadius:3 },
-          { label:'Hoàn thành', data: arr.map(x => x.done), backgroundColor: COLORS.green, borderRadius:3 },
-          { label:'Quá hạn', data: arr.map(x => x.late), backgroundColor: COLORS.red, borderRadius:3 }
-        ]
-      },
-      options: { indexAxis: 'y', plugins: { legend: { position: 'bottom', labels:{ boxWidth:12, font:{size:11} } } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }, maintainAspectRatio: false }
-    });
-  }
-
-  // 4) Completion by month (last 6 months)
+  // 2) Completion by month (last 6 months)
   destroyChart_('chartByMonth');
   const c4 = document.getElementById('chartByMonth');
   if (c4) {
