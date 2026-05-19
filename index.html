@@ -527,27 +527,40 @@ a{color:inherit;text-decoration:none}
 .adv-search-row input[type=checkbox]{accent-color:var(--c4)}
 
 
-
-/* ── FIX LOGO SIDEBAR: cắt viền đen bên trong ảnh logo, giữ các phần khác nguyên ── */
+/* ── FIX LOGO SIDEBAR: hiển thị nguyên vẹn hình tròn, không viền/không crop ── */
 .sidebar .brand-icon{
-  overflow:hidden!important;
+  width:42px!important;
+  height:42px!important;
   padding:0!important;
+  margin-bottom:10px!important;
   background:transparent!important;
   border:none!important;
   box-shadow:none!important;
-  border-radius:10px!important;
+  border-radius:50%!important;
+  overflow:visible!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
 }
 .sidebar .brand-icon img{
-  width:120%!important;
-  height:120%!important;
-  max-width:none!important;
-  max-height:none!important;
-  object-fit:cover!important;
-  transform:scale(1.08)!important;
+  width:38px!important;
+  height:38px!important;
+  max-width:38px!important;
+  max-height:38px!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  border-radius:50%!important;
+  border:none!important;
+  outline:none!important;
+  background:transparent!important;
   display:block!important;
-  border:0!important;
-  outline:0!important;
+  box-shadow:none!important;
 }
+.chart-card.status-card-wide{grid-column:span 1;}
+@media(min-width:1100px){.chart-card.status-card-wide{grid-column:span 1;}}
+.stats-total-row td{background:#f8fafc!important;font-weight:800;color:var(--c1)!important;border-bottom:2px solid #d7e3f2!important;}
+.quick-range-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:end;}
+.quick-range-bar .btn{height:36px;}
 
 </style>
 </head>
@@ -697,7 +710,7 @@ a{color:inherit;text-decoration:none}
           </div>
         </div>
         <div class="chart-grid">
-          <div class="chart-card"><h3>📊 Phân bố trạng thái</h3><div class="chart-wrap"><canvas id="chartStatus"></canvas></div></div>
+          <div class="chart-card status-card-wide"><h3>📊 Phân bố trạng thái</h3><div class="chart-wrap"><canvas id="chartStatus"></canvas></div></div>
           <div class="chart-card"><h3>📅 Tiến độ hoàn thành theo tháng</h3><div class="chart-wrap"><canvas id="chartByMonth"></canvas></div></div>
         </div>
       </div>
@@ -784,7 +797,14 @@ a{color:inherit;text-decoration:none}
             </select>
           </div>
           <button class="btn btn-primary" onclick="renderStats()">Thống kê</button>
-          <button class="btn btn-ghost" onclick="clearStatsDate()">Toàn bộ</button>
+          <div class="quick-range-bar">
+            <button class="btn btn-ghost" onclick="setStatsQuickRange('day')">Ngày</button>
+            <button class="btn btn-ghost" onclick="setStatsQuickRange('week')">Tuần</button>
+            <button class="btn btn-ghost" onclick="setStatsQuickRange('month')">Tháng</button>
+            <button class="btn btn-ghost" onclick="setStatsQuickRange('quarter')">Quý</button>
+            <button class="btn btn-ghost" onclick="setStatsQuickRange('year')">Năm</button>
+            <button class="btn btn-ghost" onclick="clearStatsDate()">Toàn bộ</button>
+          </div>
           <div class="export-bar">
             <button class="btn btn-ghost btn-sm" onclick="exportStatsExcel()">📊 Xuất Excel</button>
             <button class="btn btn-ghost btn-sm" onclick="exportStatsPDF()">📄 Xuất PDF</button>
@@ -1314,7 +1334,7 @@ function loadDashboard() {
         <div class="log-body">
           <div class="log-action">[${t.taskId}] ${esc(t.tenNhiemVu)}</div>
           <div class="log-meta">LĐPT: ${esc(shortName(getUserName(t.ldPhuTrach)) || '—')} · Người TH: ${esc(shortName(getUserName(t.nguoiThucHien)) || '—')}</div>
-          <div class="log-meta">${badgeHtml(t.trangThai,'status')} · ${fmtDateVN(t.hanHoanThanh)}</div>
+          <div class="log-meta">${badgeHtml(t.trangThai,'status')} · Hạn: ${fmtDateVN(t.hanHoanThanh)}</div>
         </div></div>`).join('')
     : '<div class="empty-state" style="padding:20px"><p>Không có nhiệm vụ chưa hoàn thành</p></div>';
 
@@ -1347,36 +1367,26 @@ function filterAndGo(filter) {
 // ── TASK LIST ─────────────────────────────────────────────
 function uniqueSorted_(arr, labelFn) {
   const seen = new Set();
-  const out = [];
-  (arr || []).forEach(raw => {
-    const v = String(raw || '').trim();
-    if (!v) return;
-    const label = String(labelFn ? labelFn(v) : v).trim();
-    const key = label.toLocaleLowerCase('vi');
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push(v);
-  });
-  return out.sort((a,b) => String(labelFn ? labelFn(a) : a).localeCompare(String(labelFn ? labelFn(b) : b), 'vi'));
+  return arr.filter(v => {
+    v = String(v || '').trim();
+    if (!v || seen.has(v)) return false;
+    seen.add(v);
+    return true;
+  }).sort((a,b) => String(labelFn ? labelFn(a) : a).localeCompare(String(labelFn ? labelFn(b) : b), 'vi'));
 }
 
-function personNameForFilter_(value) {
-  const name = String(getUserName(value) || value || '').trim();
-  return name;
+function personFilterLabel_(v) {
+  return shortName(getUserName(v) || v).trim();
 }
-
-function uniquePeopleNames_(values) {
-  const seen = new Set();
-  const out = [];
-  (values || []).forEach(v => {
-    const name = personNameForFilter_(v);
-    if (!name) return;
-    const key = name.toLocaleLowerCase('vi');
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push(name);
+function uniquePeopleFilterValues_(values) {
+  const map = new Map();
+  values.forEach(v => {
+    const label = personFilterLabel_(v);
+    if (!label) return;
+    const key = label.toLowerCase().normalize('NFC');
+    if (!map.has(key)) map.set(key, label);
   });
-  return out.sort((a,b) => a.localeCompare(b, 'vi'));
+  return [...map.values()].sort((a,b)=>a.localeCompare(b,'vi'));
 }
 
 function populateSelectOptions_(id, values, allLabel, labelFn) {
@@ -1389,13 +1399,13 @@ function populateSelectOptions_(id, values, allLabel, labelFn) {
 
 function populateColumnFilters() {
   const validTasks = allTasks.filter(t => /^ID\d{4,}$/i.test(String(t.taskId || '')));
-  const ldpts = uniquePeopleNames_(validTasks.map(t => t.ldPhuTrach));
-  const nguoiTh = uniquePeopleNames_(validTasks.map(t => t.nguoiThucHien));
+  const ldpts = uniquePeopleFilterValues_(validTasks.map(t => t.ldPhuTrach));
+  const nguoiTh = uniquePeopleFilterValues_(validTasks.map(t => t.nguoiThucHien));
   const ngayGiao = uniqueSorted_(validTasks.map(t => dateForInput(t.ngayGiao)).filter(Boolean));
   const han = uniqueSorted_(validTasks.map(t => dateForInput(t.hanHoanThanh)).filter(Boolean));
   const ngayHT = uniqueSorted_(validTasks.map(t => dateForInput(t.ngayHoanThanh)).filter(Boolean));
-  populateSelectOptions_('colFilterLdpt', ldpts, 'Tất cả', v => shortName(v));
-  populateSelectOptions_('colFilterNguoiTh', nguoiTh, 'Tất cả', v => shortName(v));
+  populateSelectOptions_('colFilterLdpt', ldpts, 'Tất cả');
+  populateSelectOptions_('colFilterNguoiTh', nguoiTh, 'Tất cả');
   populateSelectOptions_('colFilterNgayGiao', ngayGiao, 'Tất cả', v => fmtDateVN(v));
   populateSelectOptions_('colFilterHan', han, 'Tất cả', v => fmtDateVN(v));
   populateSelectOptions_('colFilterNgayHT', ngayHT, 'Tất cả', v => fmtDateVN(v));
@@ -1442,8 +1452,8 @@ function renderTaskList() {
     else if (st && st !== 'CHT' && t.trangThai !== st) return false;
     if (pr && t.mucUuTien !== pr) return false;
     if (wb && t.canhBao !== wb) return false;
-    if (fLd && personNameForFilter_(t.ldPhuTrach) !== fLd) return false;
-    if (fTh && personNameForFilter_(t.nguoiThucHien) !== fTh) return false;
+    if (fLd && personFilterLabel_(t.ldPhuTrach) !== fLd) return false;
+    if (fTh && personFilterLabel_(t.nguoiThucHien) !== fTh) return false;
     if (fNgayGiao && dateForInput(t.ngayGiao) !== fNgayGiao) return false;
     if (fHan && dateForInput(t.hanHoanThanh) !== fHan) return false;
     if (fNgayHT && dateForInput(t.ngayHoanThanh) !== fNgayHT) return false;
@@ -2405,8 +2415,8 @@ function renderStats() {
   const users = allUsers.filter(u => ['SuperAdmin','Admin','Lanhdao','Thuky','Congchuc'].includes(u.role));
   const rows = [];
   users.forEach(u => {
-    const ldpt = baseTasks.filter(t => t.ldPhuTrach === u.username || t.ldPhuTrach === u.id);
-    const direct = baseTasks.filter(t => t.nguoiThucHien === u.username || t.nguoiThucHien === u.id);
+    const ldpt = baseTasks.filter(t => t.ldPhuTrach === u.username || t.ldPhuTrach === u.id || getUserName(t.ldPhuTrach) === u.fullname);
+    const direct = baseTasks.filter(t => t.nguoiThucHien === u.username || t.nguoiThucHien === u.id || getUserName(t.nguoiThucHien) === u.fullname);
     const relatedMap = new Map();
     [...ldpt, ...direct].forEach(t => relatedMap.set(t.taskId, t));
     const related = [...relatedMap.values()];
@@ -2420,9 +2430,55 @@ function renderStats() {
     Object.entries(buckets).forEach(([k,v]) => statsBuckets[`${baseKey}_${k}`] = { title: `${getUserName(u.username)} - ${k}`, tasks: v });
     rows.push({ u, baseKey, ldpt, direct, related, done, notDone, late, ontime });
   });
-  rows.sort((a,b) => (b.related.length - a.related.length) || String(a.u.fullname).localeCompare(String(b.u.fullname),'vi'));
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--text3)">Không có dữ liệu trong khoảng thời gian đã chọn</td></tr>'; return; }
-  tbody.innerHTML = rows.map(r => `
+
+  const leaderOrder = ['Vũ Quý Hưng', 'Trương Ngọc Quảng', 'Đỗ Quang Huy'];
+  const personRank = (u) => {
+    const name = String(u.fullname || getUserName(u.username) || u.username || '').trim();
+    const idx = leaderOrder.indexOf(name);
+    if (idx >= 0) return idx;
+    if (u.role === 'Congchuc') return 100;
+    return 50;
+  };
+  rows.sort((a,b) => (personRank(a.u) - personRank(b.u)) || String(a.u.fullname).localeCompare(String(b.u.fullname),'vi'));
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--text3)">Không có dữ liệu trong khoảng thời gian đã chọn</td></tr>';
+    return;
+  }
+
+  const uniqTasks = (lists) => {
+    const m = new Map();
+    lists.flat().forEach(t => { if (t && t.taskId) m.set(t.taskId, t); });
+    return [...m.values()];
+  };
+  const totalLdpt = uniqTasks(rows.map(r => r.ldpt));
+  const totalDirect = uniqTasks(rows.map(r => r.direct));
+  const totalRelated = uniqTasks(rows.map(r => r.related));
+  const totalDone = totalRelated.filter(t => t.trangThai === 'HT');
+  const totalNotDone = totalRelated.filter(t => isChuaHoanThanh(t));
+  const totalLate = totalRelated.filter(t => isLateTask(t));
+  const totalOntime = totalRelated.filter(t => isOnTimeDoneTask(t));
+  statsBuckets['__total_ldpt'] = { title:'Tổng cộng - vai trò phụ trách', tasks: totalLdpt };
+  statsBuckets['__total_direct'] = { title:'Tổng cộng - vai trò trực tiếp', tasks: totalDirect };
+  statsBuckets['__total_related'] = { title:'Tổng cộng - tổng liên quan', tasks: totalRelated };
+  statsBuckets['__total_done'] = { title:'Tổng cộng - hoàn thành', tasks: totalDone };
+  statsBuckets['__total_notDone'] = { title:'Tổng cộng - chưa hoàn thành', tasks: totalNotDone };
+  statsBuckets['__total_late'] = { title:'Tổng cộng - chậm/muộn', tasks: totalLate };
+  statsBuckets['__total_ontime'] = { title:'Tổng cộng - đúng tiến độ', tasks: totalOntime };
+
+  const totalRow = `
+    <tr class="stats-total-row">
+      <td><b>Tổng cộng</b><div style="font-size:.72rem;color:var(--text3)">Toàn phòng</div></td>
+      <td>${bucketLink('__total_ldpt', totalLdpt.length)}</td>
+      <td>${bucketLink('__total_direct', totalDirect.length)}</td>
+      <td>${bucketLink('__total_related', totalRelated.length)}</td>
+      <td>${bucketLink('__total_done', totalDone.length, 'success')}</td>
+      <td>${bucketLink('__total_notDone', totalNotDone.length, 'warning')}</td>
+      <td>${bucketLink('__total_late', totalLate.length, 'danger')}</td>
+      <td>${bucketLink('__total_ontime', totalOntime.length, 'success')}</td>
+    </tr>`;
+
+  tbody.innerHTML = totalRow + rows.map(r => `
     <tr>
       <td><b>${esc(r.u.fullname || r.u.username)}</b><div style="font-size:.72rem;color:var(--text3)">${esc(r.u.role || '')}</div></td>
       <td>${bucketLink(r.baseKey+'_ldpt', r.ldpt.length)}</td>
@@ -2433,6 +2489,33 @@ function renderStats() {
       <td>${bucketLink(r.baseKey+'_late', r.late.length, 'danger')}</td>
       <td>${bucketLink(r.baseKey+'_ontime', r.ontime.length, 'success')}</td>
     </tr>`).join('');
+}
+
+function setStatsQuickRange(period) {
+  const now = new Date();
+  let start = new Date(now), end = new Date(now);
+  const pad = n => String(n).padStart(2,'0');
+  const toInput = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  if (period === 'day') {
+    // hôm nay
+  } else if (period === 'week') {
+    const day = now.getDay() || 7; // thứ 2 = 1, CN = 7
+    start = new Date(now); start.setDate(now.getDate() - day + 1);
+    end = new Date(start); end.setDate(start.getDate() + 6);
+  } else if (period === 'month') {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  } else if (period === 'quarter') {
+    const qStart = Math.floor(now.getMonth()/3)*3;
+    start = new Date(now.getFullYear(), qStart, 1);
+    end = new Date(now.getFullYear(), qStart + 3, 0);
+  } else if (period === 'year') {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear(), 11, 31);
+  }
+  document.getElementById('statFrom').value = toInput(start);
+  document.getElementById('statTo').value = toInput(end);
+  renderStats();
 }
 
 function renderStatsTaskList(key) {
@@ -2700,21 +2783,44 @@ function renderDashboardCharts(){
     red:'#c0392b', orange:'#d4600a', green:'#0f7c4a', gray:'#8496b0'
   };
 
-  // 1) Status pie chart
+  // 1) Status bar chart: bấm vào cột để lọc ra danh sách công việc tương ứng
   destroyChart_('chartStatus');
   const c1 = document.getElementById('chartStatus');
   if (c1) {
+    const statusCodes = ['CTH', 'ĐTH', 'CD', 'HT'];
+    const labels = ['Chưa thực hiện', 'Đang thực hiện', 'Chờ duyệt', 'Hoàn thành'];
     const cnt = { 'CTH':0, 'ĐTH':0, 'CD':0, 'HT':0 };
     allTasks.forEach(t => { if (cnt[t.trangThai] !== undefined) cnt[t.trangThai]++; });
     chartInstances.chartStatus = new Chart(c1, {
-      type: 'doughnut',
+      type: 'bar',
       data: {
-        labels: ['Chưa thực hiện', 'Đang thực hiện', 'Chờ duyệt', 'Hoàn thành'],
-        datasets: [{ data: [cnt['CTH'], cnt['ĐTH'], cnt['CD'], cnt['HT']],
+        labels,
+        datasets: [{
+          label: 'Số nhiệm vụ',
+          data: statusCodes.map(k => cnt[k]),
           backgroundColor: [COLORS.gray, COLORS.lightBlue, COLORS.gold, COLORS.green],
-          borderWidth: 2, borderColor: '#fff' }]
+          borderRadius: 7,
+          maxBarThickness: 54
+        }]
       },
-      options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } }, maintainAspectRatio: false }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        onClick: (evt, elements) => {
+          if (!elements || !elements.length) return;
+          const idx = elements[0].index;
+          const code = statusCodes[idx];
+          if (code) filterAndGo(code);
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.raw || 0} nhiệm vụ - bấm để xem danh sách` } }
+        },
+        scales: {
+          x: { grid: { display:false }, ticks: { font: { size: 11, weight: '600' } } },
+          y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#eef3fa' } }
+        }
+      }
     });
   }
 
