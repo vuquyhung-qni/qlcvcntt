@@ -36,21 +36,21 @@ a{color:inherit;text-decoration:none}
 
 /* ── LAYOUT ── */
 .layout{display:flex;min-height:100vh}
-.sidebar{width:240px;flex-shrink:0;background:linear-gradient(180deg,#081426 0%,#0d1f3a 55%,#081426 100%)!important;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:hidden;transition:width .25s;z-index:300}
+.sidebar{width:240px;flex-shrink:0;background:linear-gradient(180deg,#08245a 0%,#0a4aa2 55%,#08245a 100%)!important;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:hidden;transition:width .25s;z-index:300}
 .sidebar-brand{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
-.brand-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--c4),var(--c5));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:10px;box-shadow:0 4px 12px rgba(37,88,168,.4)}
+.brand-icon{width:42px;height:42px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:10px;box-shadow:none;overflow:hidden}
 .brand-name{font-size:.95rem;font-weight:800;color:#fff!important;line-height:1.2}
 .brand-sub{font-size:.68rem;color:rgba(255,255,255,.4)!important;margin-top:2px}
 .sidebar-nav{flex:1;padding:12px 8px;overflow-y:auto}
 .nav-section-label{font-size:.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.28)!important;padding:8px 10px 4px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:2px;cursor:pointer;transition:background .15s;color:rgba(255,255,255,.58)!important;font-size:.83rem;font-weight:500;border:none;background:none;width:100%;text-align:left}
 .nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)!important}
-.nav-item.active{background:linear-gradient(135deg,var(--c4),var(--c5));color:#fff!important;box-shadow:0 3px 10px rgba(37,88,168,.4)}
+.nav-item.active{background:rgba(255,255,255,.18);color:#fff!important;box-shadow:none;border:1px solid rgba(255,255,255,.16)}
 .nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:.8}
 .nav-item.active svg{opacity:1}
 .nav-badge{margin-left:auto;background:var(--r1);color:#fff;font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:99px;min-width:20px;text-align:center}
 .sidebar-footer{padding:12px 8px;border-top:1px solid rgba(255,255,255,.07)}
-.user-pill{width:100%;border:none;background:rgba(255,255,255,.06);color:#fff!important;display:flex;align-items:center;gap:10px;padding:9px;border-radius:12px;cursor:pointer;text-align:left}
+.user-pill{width:100%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:#fff!important;display:flex;align-items:center;gap:10px;padding:9px;border-radius:12px;cursor:pointer;text-align:left}
 .user-pill:hover{background:rgba(255,255,255,.1)}
 .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;color:var(--c0);flex-shrink:0}
 .user-info{flex:1;min-width:0}
@@ -565,7 +565,7 @@ a{color:inherit;text-decoration:none}
 
 
 /* ── ROW STRIPING: bảng thống kê và danh sách nhiệm vụ ──
-   Màu xen kẽ theo yêu cầu: #fdfdfe và #ffffe4 */
+   Màu xen kẽ theo yêu cầu: #fdfdfe và #ececf1 */
 #screen-tasks .task-table tbody tr:nth-child(odd) td,
 #screen-stats .stats-table tbody tr:nth-child(odd) td,
 #screen-stats .task-table tbody tr:nth-child(odd) td,
@@ -580,7 +580,7 @@ a{color:inherit;text-decoration:none}
 .stats-result-list .task-table tbody tr:nth-child(even) td,
 #auditTbody tr:nth-child(even) td,
 #userTbody tr:nth-child(even) td {
-  background:#ffffe4!important;
+  background:#ececf1!important;
 }
 
 /* Hover giữ rõ nhưng không phá màu cảnh báo */
